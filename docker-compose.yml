@@ -1,0 +1,73 @@
+version: '3.1'
+services:
+    nginx:
+        image: nginx:1.15.7-alpine
+        depends_on:
+          - php
+          - mysql
+        container_name: web-nginx
+        volumes:
+          - ./output:/var/www/html:rw
+          - ./provision/nginx/site.nginx.conf:/etc/nginx/conf.d/mysite.conf:ro
+        restart: on-failure
+        networks:
+          devenv:
+            ipv4_address: 192.168.199.15
+        ports:
+          - "80:80"
+          - "443:443"
+        environment:
+          - PUID="1000"
+          - PGID="1000"
+          - TZ="Australia/Melbourne"
+          - NGINX_HOST=local.test
+          - NGINX_PORT=80
+
+    php:
+        build: ./provision/php-fpm
+        container_name: web-php
+        restart: on-failure
+        networks:
+          devenv:
+            ipv4_address: 192.168.199.72
+        volumes:
+          - ./output:/var/www/html:rw
+          - ./provision/php-fpm/site.php-fpm.conf:/etc/php7/php-fpm.d/www.conf:ro
+        environment:
+          - PUID="1000"
+          - PGID="1000"
+          - TZ="Australia/Melbourne"
+
+    mysql:
+        image: mysql:5.5
+        container_name: web-mysql
+        restart: always
+        environment:
+          - MYSQL_ROOT_PASSWORD=password
+          - MYSQL_DATABASE=database
+          - MYSQL_USER=localuser
+          - MYSQL_PASSWORD=secret
+        networks:
+          devenv:
+            ipv4_address: 192.168.199.55
+        ports:
+          - "3306:3306"
+        volumes:
+          - ./database:/var/lib/mysql
+
+    redis:
+        image: redis:5
+        container_name: web-redis
+        restart: on-failure
+        command: redis-server --requirepass password
+        networks:
+          devenv:
+            ipv4_address: 192.168.199.5
+        ports:
+          - "6379:6379"
+
+networks:
+  devenv:
+    ipam:
+      config:
+        - subnet: 192.168.199.0/24
